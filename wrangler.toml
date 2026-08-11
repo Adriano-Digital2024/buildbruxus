@@ -1,9 +1,9 @@
 # Configuração do Cloudflare Pages para o BuildBruxus.
-# Docs: https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+# As Functions usam apenas fetch + Web Crypto (sem SDK do Stripe),
+# então não precisamos de nodejs_compat.
 
 name = "buildbruxus"
 compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
 
 # Observação: o build command (npm run build) ainda precisa ser definido no

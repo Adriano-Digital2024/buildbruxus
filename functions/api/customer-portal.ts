@@ -1,9 +1,8 @@
-// Cria uma Stripe Billing Portal Session — permite o usuário gerenciar assinatura,
-// trocar método de pagamento, cancelar, ver faturas, etc.
+// Cria uma Stripe Billing Portal Session — permite o usuário gerenciar assinatura.
 // Requer: header Authorization: Bearer <supabase access_token>
 // Env vars: STRIPE_SECRET_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PUBLIC_APP_URL
 
-import Stripe from "stripe";
+import { createBillingPortalSession } from "../_lib/stripe";
 
 interface Env {
   STRIPE_SECRET_KEY: string;
@@ -35,13 +34,11 @@ export const onRequestPost: any = async (context: { request: Request; env: Env }
   const customerId = subs && subs[0]?.stripe_customer_id;
   if (!customerId) return json({ error: "no_subscription_found" }, 404);
 
-  const stripe = new Stripe(env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" as any });
   const appUrl = env.PUBLIC_APP_URL || "http://localhost:5173";
-
-  const portal = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${appUrl}/account`,
-  });
+  const portal = await createBillingPortalSession(
+    { customerId, returnUrl: `${appUrl}/account` },
+    { secretKey: env.STRIPE_SECRET_KEY },
+  );
 
   return json({ url: portal.url });
 };

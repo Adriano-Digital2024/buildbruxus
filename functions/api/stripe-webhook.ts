@@ -4,12 +4,12 @@
 //   Eventos: checkout.session.completed, customer.subscription.created,
 //            customer.subscription.updated, customer.subscription.deleted
 //
-// Env vars: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Env vars: STRIPE_WEBHOOK_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// (Não usa a SDK do Stripe — apenas fetch + Web Crypto para verificação de assinatura.)
 
-import Stripe from "stripe";
+import { verifyWebhookSignature } from "../_lib/stripe";
 
 interface Env {
-  STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -17,31 +17,35 @@ interface Env {
 
 export const onRequestPost: any = async (context: { request: Request; env: Env }) => {
   const { request, env } = context;
-  const stripe = new Stripe(env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" as any });
 
   const sig = request.headers.get("Stripe-Signature") ?? "";
   const rawBody = await request.text();
 
-  let event: Stripe.Event;
+  const valid = await verifyWebhookSignature(rawBody, sig, env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) {
+    console.warn("[webhook] signature verification failed");
+    return new Response("Webhook signature verification failed", { status: 400 });
+  }
+
+  let event: any;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, env.STRIPE_WEBHOOK_SECRET);
-  } catch (err: any) {
-    console.warn("[webhook] signature verification failed:", err.message);
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+    event = JSON.parse(rawBody);
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
   }
 
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object;
         const userId = session.client_reference_id ?? session.metadata?.user_id;
         const planId = session.metadata?.plan_id ?? null;
         const tier = session.metadata?.tier ?? "pro";
         if (userId) {
           await upsertSubscription(env, {
             user_id: userId,
-            stripe_customer_id: session.customer as string,
-            stripe_subscription_id: session.subscription as string,
+            stripe_customer_id: session.customer,
+            stripe_subscription_id: session.subscription,
             stripe_price_id: null,
             plan_id: planId,
             status: "active",
@@ -54,21 +58,22 @@ export const onRequestPost: any = async (context: { request: Request; env: Env }
       }
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object;
         const userId = sub.metadata?.user_id ?? null;
         const planId = sub.metadata?.plan_id ?? null;
         const tier = sub.metadata?.tier ?? "pro";
         if (userId) {
+          const currentPeriodEnd = sub.current_period_end
+            ? new Date(sub.current_period_end * 1000).toISOString()
+            : null;
           await upsertSubscription(env, {
             user_id: userId,
-            stripe_customer_id: sub.customer as string,
+            stripe_customer_id: sub.customer,
             stripe_subscription_id: sub.id,
-            stripe_price_id: (sub.items.data[0]?.price?.id) ?? null,
+            stripe_price_id: sub.items?.data?.[0]?.price?.id ?? null,
             plan_id: planId,
             status: sub.status,
-            current_period_end: sub.current_period_end
-              ? new Date(sub.current_period_end * 1000).toISOString()
-              : null,
+            current_period_end: currentPeriodEnd,
             cancel_at_period_end: sub.cancel_at_period_end,
           });
           if (sub.status === "active" || sub.status === "trialing") {
@@ -80,7 +85,7 @@ export const onRequestPost: any = async (context: { request: Request; env: Env }
         break;
       }
       case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object;
         const userId = sub.metadata?.user_id ?? null;
         if (userId) {
           await updateSubscription(env, sub.id, { status: "canceled" });
@@ -103,7 +108,7 @@ export const onRequestPost: any = async (context: { request: Request; env: Env }
 async function upsertSubscription(env: Env, data: any) {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/subscriptions`, {
     method: "POST",
-    headers: supabaseHeaders(env, { "Prefer": "return=representation,resolution=merge-duplicates", "Content-Type": "application/json" }),
+    headers: supabaseHeaders(env, { Prefer: "return=representation,resolution=merge-duplicates", "Content-Type": "application/json" }),
     body: JSON.stringify({
       user_id: data.user_id,
       stripe_customer_id: data.stripe_customer_id,
@@ -115,9 +120,7 @@ async function upsertSubscription(env: Env, data: any) {
       cancel_at_period_end: data.cancel_at_period_end,
     }),
   });
-  if (!res.ok) {
-    console.warn("[upsert] non-ok", await res.text());
-  }
+  if (!res.ok) console.warn("[upsert] non-ok", await res.text());
 }
 
 async function updateSubscription(env: Env, stripeSubId: string, patch: any) {
@@ -125,7 +128,7 @@ async function updateSubscription(env: Env, stripeSubId: string, patch: any) {
     `${env.SUPABASE_URL}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(stripeSubId)}`,
     {
       method: "PATCH",
-      headers: supabaseHeaders(env, { "Content-Type": "application/json", "Prefer": "return=minimal" }),
+      headers: supabaseHeaders(env, { "Content-Type": "application/json", Prefer: "return=minimal" }),
       body: JSON.stringify(patch),
     },
   );
@@ -137,7 +140,7 @@ async function setProfilePlan(env: Env, userId: string, plan: string) {
     `${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
     {
       method: "PATCH",
-      headers: supabaseHeaders(env, { "Content-Type": "application/json", "Prefer": "return=minimal" }),
+      headers: supabaseHeaders(env, { "Content-Type": "application/json", Prefer: "return=minimal" }),
       body: JSON.stringify({ plan }),
     },
   );
