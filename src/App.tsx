@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { SubscriptionProvider } from "./context/SubscriptionContext";
+import { supabaseConfigured } from "./lib/supabase";
 import AuthPage from "./components/AuthPage";
+import SetupScreen from "./components/SetupScreen";
 import ChatPage from "./pages/ChatPage";
 import PricingPage from "./pages/PricingPage";
 import AccountPage from "./pages/AccountPage";
@@ -20,6 +22,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  if (!supabaseConfigured) return <SetupScreen />;
   return (
     <AuthProvider>
       <SubscriptionProvider>

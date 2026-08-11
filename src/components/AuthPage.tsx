@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Logo } from "./Logo";
 
 export default function AuthPage() {
   const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
@@ -28,7 +29,7 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-brand-950 via-slate-950 to-brand-900">
       <div className="w-full max-w-md bg-slate-900/80 backdrop-blur rounded-2xl border border-slate-800 p-8 shadow-2xl">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-2">🧙</div>
+          <Logo className="h-14 mx-auto mb-3" alt="BuildBruxus" />
           <h1 className="text-2xl font-bold text-white">BuildBruxus</h1>
           <p className="text-slate-400 text-sm mt-1">
             {mode === "signin" ? "Entre para acessar o chat" : "Crie sua conta grátis"}

@@ -1,6 +1,7 @@
 import { useAuth } from "../context/AuthContext";
 import { useSubscription, type Tier } from "../context/SubscriptionContext";
 import { Link, useNavigate } from "react-router-dom";
+import { Logo } from "./Logo";
 
 const TIER_STYLES: Record<Tier, string> = {
   free: "bg-slate-700 text-slate-200",
@@ -16,7 +17,7 @@ export default function Sidebar({ onNewRoom }: { onNewRoom: () => void }) {
   return (
     <aside className="w-full sm:w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col h-full">
       <div className="px-4 py-4 border-b border-slate-800 flex items-center gap-2">
-        <span className="text-2xl">🧙</span>
+        <Logo className="h-8 w-auto" alt="BuildBruxus" />
         <div className="flex-1">
           <div className="font-semibold text-white leading-tight">BuildBruxus</div>
           <div className="text-xs text-slate-500">chat SaaS</div>

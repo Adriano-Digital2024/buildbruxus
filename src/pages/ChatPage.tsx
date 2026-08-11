@@ -5,6 +5,7 @@ import { useSubscription } from "../context/SubscriptionContext";
 import Sidebar from "../components/Sidebar";
 import RoomList from "../components/RoomList";
 import ChatWindow from "../components/ChatWindow";
+import { Logo } from "../components/Logo";
 import type { Room } from "../hooks/useRooms";
 
 const PRO_ONLY_SLUGS = ["pro-only"];
@@ -60,7 +61,7 @@ export default function ChatPage() {
           ) : (
             <div className="flex-1 flex items-center justify-center text-slate-500">
               <div className="text-center">
-                <div className="text-5xl mb-3">🧙</div>
+                <Logo className="h-16 mx-auto mb-3 opacity-70" alt="BuildBruxus" />
                 <p className="text-sm">Selecione uma sala para começar a conversar</p>
               </div>
             </div>

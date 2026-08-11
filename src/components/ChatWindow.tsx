@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useMessages } from "../hooks/useMessages";
 import { usePresence } from "../hooks/usePresence";
 import { useAuth } from "../context/AuthContext";
+import { Logo } from "./Logo";
 import MessageItem from "./MessageItem";
 import MessageInput from "./MessageInput";
 
@@ -42,7 +43,7 @@ export default function ChatWindow({ roomId, roomName }: { roomId: string; roomN
           <p className="text-sm text-slate-500">Carregando mensagens...</p>
         ) : messages.length === 0 ? (
           <div className="text-center text-slate-500 mt-10">
-            <div className="text-4xl mb-2">💬</div>
+            <Logo className="h-12 mx-auto mb-3 opacity-50" alt="BuildBruxus" />
             <p className="text-sm">Seja o primeiro a enviar uma mensagem aqui!</p>
           </div>
         ) : (

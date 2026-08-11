@@ -1,21 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!url || !anonKey || url.includes("SEU-PROJETO")) {
-  // Não quebra o dev mode; mostra aviso claro no console.
-  console.warn(
-    "[BuildBruxus] Variáveis VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY não configuradas. " +
-      "Copie .env.example para .env e preencha com as chaves do seu projeto Supabase.",
-  );
-}
+export const supabaseConfigured =
+  Boolean(url && anonKey && !url.includes("SEU-PROJETO") && !anonKey.includes("sua-anon-key"));
 
-export const supabase = createClient(url ?? "", anonKey ?? "", {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+// Cliente sempre tipado; quando não configurado usamos um placeholder que não
+// vai de fato ser chamado, porque <App/> renderiza <SetupScreen/> antes.
+export const supabase = createClient(
+  supabaseConfigured ? url! : "https://placeholder.supabase.co",
+  supabaseConfigured ? anonKey! : "placeholder-anon-key",
+  {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    realtime: { params: { eventsPerSecond: 10 } },
   },
-  realtime: { params: { eventsPerSecond: 10 } },
-});
+);
